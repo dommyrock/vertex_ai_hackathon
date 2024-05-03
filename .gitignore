@@ -1,0 +1,6 @@
+/target
+/documents
+/python/documents
+job_links.csv
+documents.7z
+*qdrant_storage

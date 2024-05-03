@@ -12,6 +12,8 @@
 
 
 # GOOGLE DRIVE
+# langchain retriever: https://python.langchain.com/docs/integrations/retrievers/google_drive/
+ 
 # required job documents Shared from my drive
 # documents.7z
 # https://drive.google.com/file/d/1VkG_onEjQFTjbFQYUghxPci7xQ4CFTxc/view?usp=sharing
@@ -30,7 +32,7 @@
 # Vertex AI
 from google.cloud import aiplatform
 print(f"Vertex AI SDK version: {aiplatform.__version__}")
-import vertexai
+# import vertexai
 from typing import List
 from vertexai.language_models import TextEmbeddingInput, TextEmbeddingModel
 
@@ -41,8 +43,6 @@ from langchain.prompts import PromptTemplate
 from langchain_community.document_loaders import TextLoader
 from langchain_community.document_loaders import DirectoryLoader
 from langchain_community.vectorstores import Qdrant
-
-# from langchain.vectorstores import Chroma
 
 from qdrant_client import QdrantClient, models
 from qdrant_client.models import Distance, VectorParams

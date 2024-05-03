@@ -4,3 +4,9 @@
 job_links.csv
 documents.7z
 *qdrant_storage
+*Dominik_Polzer_Resume.pdf
+
+#chainlit
+*.chainlit
+__pycache__
+chainlit.md

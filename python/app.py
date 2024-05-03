@@ -47,9 +47,6 @@ from langchain_community.vectorstores import Qdrant
 from qdrant_client import QdrantClient, models
 from qdrant_client.models import Distance, VectorParams
 from qdrant_client.models import PointStruct
-# TODO
-# 1 match job id in file name "77203860222812870" to one ithe job_links.csv
-# 2 Attach that job link as metadata to job file inindex
 
 # Import custom Matching Engine packages
 from langchain_google_vertexai import (
@@ -57,6 +54,11 @@ from langchain_google_vertexai import (
     VertexAIEmbeddings,
     #VectorSearchVectorStore,# currently not used , but might expose through hosted endpoint on the cloud for v2
 )
+
+# PROJECT_ID = "vertexai-hackathon-422020"
+# REGION = "us-central1" 
+# # Initialize Vertex AI SDK
+# vertexai.init(project=PROJECT_ID, location=REGION)
 
 #load docs
 path = "documents"
@@ -66,7 +68,6 @@ documents = loader.load()
 
 num_docs= len(documents)
 print(f"\n{num_docs} Job Documents loaded.")
-
 
 # split the documents into chunks
 # option 2 > https://python.langchain.com/docs/modules/data_connection/document_transformers/semantic-chunker/
@@ -84,19 +85,15 @@ print(f"Number chunks {len(document_chunks)}")
 # Document object
 # page_content='Job title: ...', metadata={'source': 'documents\\0_jobId_110759204500710086.txt'}
 
-PROJECT_ID = "vertexai-hackathon-422020"
-REGION = "us-central1" 
-
-# # Initialize Vertex AI SDK
-# vertexai.init(project=PROJECT_ID, location=REGION)
-
 # prerequisit 
-# gcloud auth application-default login (https://cloud.google.com/docs/authentication/provide-credentials-adc#local-dev)
+# gcloud auth application-default login:
+# https://cloud.google.com/docs/authentication/provide-credentials-adc#local-dev
+
 # Default location Windows
 # C:\Users\<USER>\AppData\Roaming\gcloud\application_default_credentials.json
 
 def embed_text(
-    texts: List[str] = ["banana muffins? ", "banana bread? banana muffins?"],
+    texts: List[str],
     task: str = "RETRIEVAL_DOCUMENT",
     model_name: str = "textembedding-gecko@003",# 3072 input tokens and outputs 768-dimensional vector embeddings.
 ) -> List[List[float]]:
@@ -193,29 +190,9 @@ qdrant = Qdrant.from_documents(
     collection_name=COLLECTION_NAME,
 )
 
-
-
-
-# TODO --> FIGURE OUT THE EMBEDDINGS FIRST !!!! than go after store .... 
-
-#Other LLM options
-# llm = VertexAI(model_name="gemini-1.0-pro-002")
-# Streaming api --> https://python.langchain.com/docs/integrations/llms/google_vertex_ai_palm/
-
-# There is also a 6k (chat-bison) and 32k context fintuned for chat 
-# llm = VertexAI(model_name="chat-bison-32k")
-
-# Embeddings API integrated with langChain
-# EXAMPLE FROM DOCS: https://cloud.google.com/vertex-ai/generative-ai/docs/embeddings/get-text-embeddings
-# embeddings = VertexAIEmbeddings(model_name="textembedding-gecko@003")
-# doc_result = embeddings.embed_documents([document_chunks])
-
-
-
 # Expose index to the retriever
-# Contextuak retr : https://python.langchain.com/docs/modules/data_connection/retrievers/contextual_compression/
-# Filter out initial docs: https://python.langchain.com/docs/modules/data_connection/retrievers/contextual_compression/#llmchainfilter 
-
+# Contextual compression: https://python.langchain.com/docs/modules/data_connection/retrievers/contextual_compression/
+# Filter initial docs: https://python.langchain.com/docs/modules/data_connection/retrievers/contextual_compression/#llmchainfilter 
 TOP_K = 5
 retriever = qdrant.as_retriever(
     search_type="similarity",
@@ -224,7 +201,6 @@ retriever = qdrant.as_retriever(
     },
     filters=None,
 )
-
 # res = retriever.invoke("Pixel devices jobs are the ones I'm looking for at the moment.")
 # print(res)
 
@@ -247,6 +223,17 @@ Question: {question}
 Helpful Answer:"""
 
 # Text model instance integrated with langChain
+#Other LLM options
+# llm = VertexAI(model_name="gemini-1.0-pro-002")
+# Streaming api --> https://python.langchain.com/docs/integrations/llms/google_vertex_ai_palm/
+
+# There is also a 6k (chat-bison) and 32k context fintuned for chat 
+# llm = VertexAI(model_name="chat-bison-32k")
+
+# Embeddings API integrated with langChain
+# EXAMPLE FROM DOCS: https://cloud.google.com/vertex-ai/generative-ai/docs/embeddings/get-text-embeddings
+# embeddings = VertexAIEmbeddings(model_name="textembedding-gecko@003")
+# doc_result = embeddings.embed_documents([document_chunks])
 llm = VertexAI(
     model_name="text-bison@002",
     max_output_tokens=1024,
@@ -257,7 +244,6 @@ llm = VertexAI(
 )
 
 # Uses LLM to synthesize results from the search index.
-# We use Vertex PaLM Text API for LLM
 qa = RetrievalQA.from_chain_type(
     llm=llm,
     chain_type="stuff",
@@ -271,7 +257,7 @@ qa = RetrievalQA.from_chain_type(
         ),
     },
 )
-# Enable for troubleshooting
+# Troubleshooting
 # qa.combine_documents_chain.verbose = True
 # qa.combine_documents_chain.llm_chain.verbose = True
 # qa.combine_documents_chain.llm_chain.llm.verbose = True
@@ -286,8 +272,6 @@ print(result)
 
 
 # GC UTILS
-
-# 
 
 # Make a Google Cloud Storage bucket in your GCP project to copy the document files into.
 #   GCS_BUCKET_DOCS = f"{PROJECT_ID}-documents"
@@ -304,17 +288,14 @@ print(result)
 # 1 gcloud auth login
 # 2 gcloud config set project vertexai-hackathon-422020
 
-# Not needed for vertex 
+# Requirements for Google Storage 
 # 3 IAM bucket policies
 # gcloud projects add-iam-policy-binding <PROJECT_ID> --member=user:<YOUR_EMAIL_ADDRESS> --role=roles/storage.objectViewer
-
-# gcloud projects add-iam-policy-binding vertexai-hackathon-422020 --member=user:dom.polzer@gmail.com --role=roles/storage.objectViewer
-# storage.objects.list didn't work so i went to https://console.cloud.google.com/iam-admin/ and added admin acces for my dom.polzer@gmail.com on project
+# https://console.cloud.google.com/iam-admin/ (Add  IAM roles manually )
 
 # copy docs and embeddings to GC Storage
 # !gsutil cp -r documents  gs://doit-llm/documents
 # !gsutil cp embeddings.json gs://doit-llm/embeddings/embeddings.json 
-
 
 #gsutil install
 # https://cloud.google.com/storage/docs/gsutil_install
@@ -324,4 +305,4 @@ print(result)
 
 # Qdrant 
 # podman run --name vertex_ai -p 6333:6333 -p 6334:6334 -v c:/Users/dpolzer/me/git/vertex_ai_hackathon/python/qdrant_storage:/qdrant/storage qdrant/qdrant
-# docker run -p 6333:6333 -p 6334:6334 -v $(pwd)/qdrant_storage:/qdrant/storage:z qdrant/qdrant (didn't quite work without abs path)
+# docker run -p 6333:6333 -p 6334:6334 -v $(pwd)/qdrant_storage:/qdrant/storage:z qdrant/qdrant (didn't quite work without abs path WIN11)
